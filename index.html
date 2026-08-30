@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f1eb" />
+    <meta
+      name="description"
+      content="A private, browser-based speech trainer for pronunciation, clarity, and vocal confidence."
+    />
+    <title>ClearSpeak — Speech Trainer</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <div class="st-app" id="speech-trainer-app">
+      <header class="st-header">
+        <button class="st-brand" type="button" data-route="practice" aria-label="ClearSpeak home">
+          <span class="st-brand-mark" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+          </span>
+          <span>ClearSpeak</span>
+        </button>
+        <nav class="st-nav" aria-label="Primary navigation">
+          <button class="st-nav-link is-active" type="button" data-route="practice">Practice</button>
+          <button class="st-nav-link" type="button" data-route="history">
+            History <span class="st-history-count" id="history-count">0</span>
+          </button>
+        </nav>
+      </header>
+
+      <main class="st-main" id="app-view" tabindex="-1"></main>
+
+      <footer class="st-footer">
+        <p><span class="st-lock" aria-hidden="true">◇</span> Private by design. ClearSpeak never stores your audio.</p>
+      </footer>
+    </div>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
