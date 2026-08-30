@@ -54,6 +54,16 @@ html[data-theme="dark"] .st-app {
   --st-red-text: #ecab9f;
 }
 
+/* Modifier for embedding inside a host page that centers content in a
+   narrow column (e.g. PaperMod's .main, capped around 768px). Breaks the
+   app out to the full viewport width regardless of nesting/padding.
+   Unused — and harmless — when this file is loaded standalone. */
+.st-app-fullbleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
 .st-app *, .st-app *::before, .st-app *::after { box-sizing: border-box; }
 .st-app button, .st-app textarea, .st-app select, .st-app input { font: inherit; }
 .st-app button { color: inherit; }
