@@ -71,7 +71,7 @@ function buildSkill(id, scores) {
   };
 }
 
-export function placementStartingLevel(diagnosis, maxLevel) {
+export function placementStartingLevel(diagnosis, maxLevel = 5) {
   const scores = SKILL_PRIORITY.map((id) => diagnosis.skills[id].score).filter((score) => score !== null);
   if (!scores.length) return 1;
   const composite = average(scores);

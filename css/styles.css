@@ -109,14 +109,8 @@ html[data-theme="dark"] .st-app {
 .st-banner.is-error { border-color: var(--st-red-border); background: var(--st-red-pale); color: var(--st-red-text); }
 .st-banner strong { display: block; margin-bottom: 2px; }
 
-.st-level-track { display: flex; gap: 10px; margin: 30px 0 26px; flex-wrap: wrap; }
-.st-level-dot { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--st-line); background: var(--st-card); font: 600 13px ui-monospace, monospace; color: var(--st-ink-soft); }
-.st-level-dot.is-current { border-color: var(--st-green-fill); background: var(--st-green-fill); color: #fff; }
-.st-level-dot.is-passed { border-color: var(--st-green); background: var(--st-green-pale); color: var(--st-green); }
-.st-level-dot.is-locked { opacity: .55; }
-.st-level-card { padding: clamp(24px, 4vw, 36px); margin-top: 6px; max-width: 720px; }
-.st-level-focus { margin: 4px 0 20px; color: var(--st-ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-.st-level-preview { font-size: clamp(22px, 3vw, 30px); margin-bottom: 0; }
+.st-level-card { padding: clamp(24px, 4vw, 36px); margin-top: 30px; max-width: 720px; }
+.st-level-focus { margin: 4px 0 14px; color: var(--st-ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
 
 .st-level-banner { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 26px; padding: 20px 22px; border-radius: 16px; border: 1px solid var(--st-line); }
 .st-level-banner span { font-size: 22px; }
@@ -275,8 +269,6 @@ html[data-theme="dark"] .st-app {
   .st-back-label { display: none; }
   .st-main { width: min(100% - 26px, 1080px); padding-top: 46px; }
   .st-focus-symbol { width: 42px; height: 42px; }
-  .st-level-track { gap: 8px; }
-  .st-level-dot { width: 34px; height: 34px; }
   .st-level-banner { flex-direction: column; }
   .st-assessment-layout { grid-template-columns: 1fr; }
   .st-assessment-battery { grid-template-columns: 1fr; }

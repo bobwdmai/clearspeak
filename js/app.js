@@ -3,7 +3,8 @@ import { SpeechRecognitionController } from './speech-recognition.js';
 import { VoiceMetricsTracker } from './volume-pitch.js';
 import { alignWords } from './scoring.js';
 import { analyzeSkills, evaluateLevelAttempt, placementStartingLevel } from './skill-analysis.js';
-import { LEVELS, MAX_LEVEL, getLevel, getLevelScript, getPlacementBattery } from './levels.js';
+import { getFallbackScript, getLevelRequirements, getPlacementBattery } from './levels.js';
+import { generateLevelPassage, LevelGenerationError } from './level-generator.js';
 import { clearHistory, exportBackup, importBackup, loadData, saveSession, setLevelProgress } from './storage.js';
 
 const MAX_DURATION_MS = 120_000;
@@ -95,33 +96,26 @@ function capabilityBanner() {
 // --- Level home -----------------------------------------------------------
 
 function renderLevelHome(data = loadData()) {
-  const currentLevelId = Math.min(data.profile?.currentLevel || 1, MAX_LEVEL);
-  const passedLevels = data.profile?.passedLevels || [];
-  const level = getLevel(currentLevelId);
-  const script = getLevelScript(level);
-  const allComplete = passedLevels.includes(MAX_LEVEL);
+  const currentLevelId = data.profile?.currentLevel || 1;
+  const passedCount = (data.profile?.passedLevels || []).length;
+  const diagnosis = analyzeSkills(data.sessions);
+  const focus = diagnosis.weakestSkill?.id || 'general';
   const message = setupMessage
     ? `<div class="st-banner is-error" role="alert"><span aria-hidden="true">!</span><div><strong>Could not start the session</strong>${escapeHtml(setupMessage)}</div></div>`
     : capabilityBanner();
-
-  const track = LEVELS.map((entry) => {
-    const state = passedLevels.includes(entry.id) ? 'is-passed' : entry.id === currentLevelId ? 'is-current' : 'is-locked';
-    return `<div class="st-level-dot ${state}" title="${escapeHtml(entry.title)}">${passedLevels.includes(entry.id) ? '✓' : entry.id}</div>`;
-  }).join('');
 
   view.innerHTML = `
     <section aria-labelledby="setup-title">
       <p class="st-kicker">Your private speaking studio</p>
       <h1 class="st-title" id="setup-title">Say it with <em>clarity.</em></h1>
-      <p class="st-lead">Clear one level at a time. Each passage has its own bar to hit before the next one unlocks.</p>
-      <div class="st-level-track" aria-label="Level progress">${track}</div>
+      <p class="st-lead">Clear one level at a time. Each passage is written fresh for wherever you need the most work, and has its own bar to hit before the next one unlocks.</p>
       ${message}
       <div class="st-card st-level-card">
-        <p class="st-card-label">${escapeHtml(level.title)}</p>
-        <p class="st-level-focus">Focus: ${level.focus.map((id) => SKILL_COPY[id].label).join(' + ')}</p>
-        <p class="st-target st-level-preview">${escapeHtml(script.text)}</p>
+        <p class="st-card-label">Level ${currentLevelId}</p>
+        <p class="st-level-focus">Focus: ${SKILL_COPY[focus]?.label || 'General warm-up'}${passedCount ? ` · ${passedCount} level${passedCount === 1 ? '' : 's'} cleared` : ''}</p>
+        <p class="st-microcopy">Your passage is generated when you start, so you won't see it until then.</p>
         <div class="st-editor-actions">
-          <span class="st-microcopy">${allComplete ? "You've cleared every level — replaying Level 5 keeps you sharp." : `Clear this level to unlock Level ${Math.min(currentLevelId + 1, MAX_LEVEL)}.`}</span>
+          <span class="st-microcopy">Clear this level to unlock Level ${currentLevelId + 1}.</span>
           <button class="st-primary" id="start-level" type="button" ${AudioCapture.isSupported() ? '' : 'disabled'}>
             Start Level ${currentLevelId} <span class="st-primary-arrow" aria-hidden="true">→</span>
           </button>
@@ -129,9 +123,29 @@ function renderLevelHome(data = loadData()) {
       </div>
     </section>`;
 
-  document.querySelector('#start-level')?.addEventListener('click', () =>
-    startSession(script.text, { levelAttempt: true, levelId: currentLevelId })
-  );
+  document.querySelector('#start-level')?.addEventListener('click', () => beginLevelAttempt(currentLevelId, focus));
+}
+
+async function beginLevelAttempt(levelId, focus) {
+  const startButton = document.querySelector('#start-level');
+  if (startButton) {
+    startButton.disabled = true;
+    startButton.textContent = 'Writing your passage…';
+  }
+
+  let text;
+  try {
+    const generated = await generateLevelPassage(levelId, focus);
+    text = generated.text;
+  } catch (error) {
+    text = getFallbackScript(focus).text;
+    showToast(
+      error instanceof LevelGenerationError && error.reason === 'budget_exceeded'
+        ? "Today's AI passage budget is used up — using a preset passage instead."
+        : "Couldn't reach the passage generator — using a preset passage instead."
+    );
+  }
+  startSession(text, { levelAttempt: true, levelId, focus });
 }
 
 // --- Placement test ---------------------------------------------------------
@@ -226,7 +240,7 @@ function finishPlacement(batchId) {
   const data = loadData();
   const batchSessions = data.sessions.filter((session) => session.meta?.placementBatchId === batchId);
   const diagnosis = analyzeSkills(batchSessions);
-  const startingLevel = placementStartingLevel(diagnosis, MAX_LEVEL);
+  const startingLevel = placementStartingLevel(diagnosis);
   setLevelProgress({ placementCompleted: true, currentLevel: startingLevel, passedLevels: [] });
   placement = null;
   renderPlacementResults(diagnosis, startingLevel);
@@ -327,7 +341,7 @@ function renderRecording() {
   clearActiveNav();
   const kicker = activeSession.options.placement
     ? `Placement · Passage ${activeSession.options.placementIndex + 1} of ${activeSession.options.placementTotal}`
-    : `Level ${activeSession.options.levelId}`;
+    : `Level ${activeSession.options.levelId} · ${SKILL_COPY[activeSession.options.focus]?.label || 'Warm-up'}`;
   view.innerHTML = `
     <section class="st-recording" aria-labelledby="recording-title">
       <div class="st-session-top">
@@ -411,7 +425,7 @@ async function stopSession() {
       recognitionSupported: session.recognitionSupported,
       userAgent: navigator.userAgent,
       ...(session.options.placement ? { placementBatchId: session.options.placementBatchId } : {}),
-      ...(session.options.levelAttempt ? { levelId: session.options.levelId } : {})
+      ...(session.options.levelAttempt ? { levelId: session.options.levelId, focus: session.options.focus } : {})
     }
   };
   saveSession(currentResult);
@@ -426,12 +440,12 @@ async function stopSession() {
       finishPlacement(session.options.placementBatchId);
     }
   } else {
-    const level = getLevel(session.options.levelId);
+    const level = getLevelRequirements(session.options.levelId);
     const { passed, reasons } = evaluateLevelAttempt(level, currentResult);
     if (passed) {
       const data = loadData();
       const passedLevels = Array.from(new Set([...(data.profile?.passedLevels || []), level.id]));
-      setLevelProgress({ currentLevel: Math.min(level.id + 1, MAX_LEVEL), passedLevels });
+      setLevelProgress({ currentLevel: level.id + 1, passedLevels });
     }
     renderLevelResult(currentResult, level, passed, reasons);
   }
@@ -467,11 +481,8 @@ function renderLevelResult(session, level, passed, reasons) {
   const clarity = session.clarityScore === null ? '—' : session.clarityScore;
   const volume = session.toneMetrics?.volumeConsistency?.label || 'not enough data';
   const pitch = session.toneMetrics?.pitchVariation?.label || 'not enough data';
-  const isFinalLevel = level.id === MAX_LEVEL;
-  const heading = passed
-    ? (isFinalLevel ? "Level 5 cleared — you've finished the track!" : `Level ${level.id} passed`)
-    : `Not quite — Level ${level.id} needs another pass`;
-  const continueLabel = passed ? (isFinalLevel ? 'Back to levels' : 'Next level') : 'Try again';
+  const heading = passed ? `Level ${level.id} passed` : `Not quite — Level ${level.id} needs another pass`;
+  const continueLabel = passed ? 'Next level' : 'Try again';
 
   view.innerHTML = `
     <section class="st-results" aria-labelledby="results-title">

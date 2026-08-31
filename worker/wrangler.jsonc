@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "clearspeak-levels",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-30",
+  "ai": { "binding": "AI" },
+  "kv_namespaces": [
+    { "binding": "LEVEL_BUDGET", "id": "b55c767413e3433e86ef6e228de2a6dd" }
+  ],
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+}

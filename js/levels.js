@@ -1,55 +1,30 @@
 import { PRACTICE_SCRIPTS } from './scripts-library.js';
 
-export const LEVELS = [
-  {
-    id: 1,
-    scriptId: 'morning',
-    title: 'Level 1 — Warm-up',
-    focus: ['clarity'],
-    passThreshold: { clarity: 65 }
-  },
-  {
-    id: 2,
-    scriptId: 'thought',
-    title: 'Level 2 — Steady pacing',
-    focus: ['pitch'],
-    passThreshold: { clarity: 70, pitchNotMonotone: true }
-  },
-  {
-    id: 3,
-    scriptId: 'seashells',
-    title: 'Level 3 — Crisp consonants',
-    focus: ['clarity'],
-    passThreshold: { clarity: 75 }
-  },
-  {
-    id: 4,
-    scriptId: 'weather',
-    title: 'Level 4 — Rapid rhythm',
-    focus: ['clarity'],
-    passThreshold: { clarity: 80 }
-  },
-  {
-    id: 5,
-    scriptId: 'presentation',
-    title: 'Level 5 — Full delivery',
-    focus: ['volume', 'pitch'],
-    passThreshold: { clarity: 85, volumeNotInconsistent: true, pitchNotMonotone: true }
-  }
-];
-
-export const MAX_LEVEL = LEVELS.length;
+// Level content is generated per attempt (see level-generator.js) instead of
+// coming from a fixed table, so there's no level ceiling — only how the pass
+// bar scales with the level number.
+export function getLevelRequirements(level) {
+  const clarity = Math.min(65 + (level - 1) * 3, 92);
+  return {
+    id: level,
+    title: `Level ${level}`,
+    passThreshold: {
+      clarity,
+      volumeNotInconsistent: level >= 2,
+      pitchNotMonotone: level >= 2
+    }
+  };
+}
 
 export const PLACEMENT_SCRIPT_IDS = ['morning', 'seashells', 'presentation'];
 
-export function getLevel(id) {
-  return LEVELS.find((level) => level.id === id) ?? LEVELS[0];
-}
-
-export function getLevelScript(level) {
-  return PRACTICE_SCRIPTS.find((script) => script.id === level.scriptId);
-}
-
 export function getPlacementBattery() {
   return PLACEMENT_SCRIPT_IDS.map((id) => PRACTICE_SCRIPTS.find((script) => script.id === id));
+}
+
+// Used only when live generation fails or the daily budget is exhausted —
+// a small pool to fall back on so the app stays usable.
+export function getFallbackScript(focus) {
+  const tagged = PRACTICE_SCRIPTS.find((script) => script.focus?.includes(focus));
+  return tagged || PRACTICE_SCRIPTS[0];
 }

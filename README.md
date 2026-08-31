@@ -8,9 +8,17 @@ No audio is ever uploaded or stored. Completed sessions keep only the target tex
 
 ## Placement test and levels
 
-On first use, ClearSpeak offers a three-passage placement test that takes about two minutes. It uses the same private recording pipeline as every level, and **Skip and start at Level 1** always remains available. The result places you at one of five fixed levels, ordered by difficulty, each tagged with the skill — clarity, volume, or pitch — it exercises most.
+On first use, ClearSpeak offers a three-passage placement test that takes about two minutes. It uses the same private recording pipeline as every level, and **Skip and start at Level 1** always remains available. The result places you at a starting level based on your composite clarity/volume/pitch score.
 
-Passing a level means clearing its bar: a minimum clarity score, and for some levels, steady volume or expressive (non-monotone) pitch. Falling short serves the same level again with specific reasons why; clearing it unlocks the next one. There's no way to jump ahead or pick an arbitrary passage — progress is level-by-level only.
+Each level's passage is written on demand by the `worker/` Cloudflare Worker (see below) — targeted at whichever skill your local session history says is currently weakest, with difficulty scaling with the level number. Passing a level means clearing its bar: a minimum clarity score, and from level 2 on, steady volume and expressive (non-monotone) pitch. Falling short serves the same level again (a freshly generated passage, not a repeat) with specific reasons why; clearing it unlocks the next one. There's no fixed ceiling and no way to jump ahead or pick an arbitrary passage — progress is level-by-level only.
+
+If passage generation is unavailable (offline, or the Worker's daily token budget is used up) ClearSpeak falls back to one of a small set of preset passages tagged by focus, so a level attempt never gets stuck waiting on the network.
+
+## The level-generation Worker
+
+`worker/` is a small, separate Cloudflare Worker (`clearspeak-levels`) that ClearSpeak's frontend calls to generate each level's passage. It's the one piece of this app that isn't purely client-side, and deliberately so: generating text requires a model call, and a Workers AI credential must never be shipped in browser-loaded code. The Worker reaches Workers AI through Cloudflare's native `AI` binding — no API token exists anywhere in this app, client or server.
+
+To keep cost bounded regardless of traffic, the Worker tracks total tokens spent per calendar day (America/New_York) in a KV namespace and refuses new generations past a daily cap — 7,000 tokens most days, 5,000 on Sundays — returning a `budget_exceeded` response the client already knows how to fall back from. Deploy it with `cd worker && npx wrangler deploy`; see `worker/wrangler.jsonc` for its bindings.
 
 ## How scoring works
 
