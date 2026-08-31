@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   analyzeSkills,
   evaluateLevelAttempt,
+  frequentMissWords,
   levelForScore,
   placementStartingLevel,
   scorePitchLabel,
@@ -13,10 +14,12 @@ function session({
   clarity = 80,
   recognitionSupported = true,
   volume = 'steady',
-  pitch = 'normal'
+  pitch = 'normal',
+  wordAlignment = []
 } = {}) {
   return {
     clarityScore: clarity,
+    wordAlignment,
     toneMetrics: {
       volumeConsistency: { label: volume },
       pitchVariation: { label: pitch }
@@ -96,4 +99,23 @@ test('evaluateLevelAttempt skips the clarity bar without speech recognition', ()
   const level = { id: 1, passThreshold: { clarity: 65 } };
   const result = evaluateLevelAttempt(level, session({ clarity: 0, recognitionSupported: false }));
   assert.equal(result.passed, true);
+});
+
+test('frequentMissWords surfaces words missed at least twice, most frequent first', () => {
+  const sessions = [
+    session({ wordAlignment: [{ op: 'sub', targetWord: 'thoughtful', heardWord: 'thoughtless' }, { op: 'match', targetWord: 'speaker' }] }),
+    session({ wordAlignment: [{ op: 'deletion', targetWord: 'thoughtful' }, { op: 'sub', targetWord: 'purpose', heardWord: 'porpoise' }] }),
+    session({ wordAlignment: [{ op: 'deletion', targetWord: 'purpose' }] }),
+    session({ wordAlignment: [{ op: 'match', targetWord: 'clarity' }] })
+  ];
+  assert.deepEqual(frequentMissWords(sessions), ['thoughtful', 'purpose']);
+});
+
+test('frequentMissWords ignores sessions without speech recognition and respects minCount/maxWords', () => {
+  const sessions = [
+    session({ recognitionSupported: false, wordAlignment: [{ op: 'sub', targetWord: 'ignored', heardWord: 'x' }] }),
+    session({ wordAlignment: [{ op: 'sub', targetWord: 'once', heardWord: 'x' }] })
+  ];
+  assert.deepEqual(frequentMissWords(sessions), []);
+  assert.deepEqual(frequentMissWords(sessions, { minCount: 1 }), ['once']);
 });

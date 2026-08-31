@@ -71,6 +71,28 @@ function buildSkill(id, scores) {
   };
 }
 
+// Words actually mis-said (substituted or dropped) in recent sessions, most
+// frequent first — the concrete evidence behind a 'clarity' weak spot, as
+// opposed to just the category name.
+export function frequentMissWords(sessions = [], { windowSize = 10, minCount = 2, maxWords = 6 } = {}) {
+  const counts = new Map();
+  sessions
+    .slice(0, windowSize)
+    .filter((session) => session.meta?.recognitionSupported)
+    .forEach((session) => {
+      (session.wordAlignment || []).forEach(({ op, targetWord }) => {
+        if (op === 'match' || !targetWord) return;
+        counts.set(targetWord, (counts.get(targetWord) || 0) + 1);
+      });
+    });
+
+  return [...counts.entries()]
+    .filter(([, count]) => count >= minCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxWords)
+    .map(([word]) => word);
+}
+
 export function placementStartingLevel(diagnosis, maxLevel = 5) {
   const scores = SKILL_PRIORITY.map((id) => diagnosis.skills[id].score).filter((score) => score !== null);
   if (!scores.length) return 1;

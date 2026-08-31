@@ -7,13 +7,13 @@ export class LevelGenerationError extends Error {
   }
 }
 
-export async function generateLevelPassage(level, focus) {
+export async function generateLevelPassage(level, focus, troubleWords = []) {
   let response;
   try {
     response = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ level, focus })
+      body: JSON.stringify({ level, focus, troubleWords })
     });
   } catch {
     throw new LevelGenerationError('network');

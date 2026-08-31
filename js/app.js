@@ -2,7 +2,7 @@ import { AudioCapture } from './audio-capture.js';
 import { SpeechRecognitionController } from './speech-recognition.js';
 import { VoiceMetricsTracker } from './volume-pitch.js';
 import { alignWords } from './scoring.js';
-import { analyzeSkills, evaluateLevelAttempt, placementStartingLevel } from './skill-analysis.js';
+import { analyzeSkills, evaluateLevelAttempt, frequentMissWords, placementStartingLevel } from './skill-analysis.js';
 import { getFallbackScript, getLevelRequirements, getPlacementBattery } from './levels.js';
 import { generateLevelPassage, LevelGenerationError } from './level-generator.js';
 import { clearHistory, exportBackup, importBackup, loadData, saveSession, setLevelProgress } from './storage.js';
@@ -100,6 +100,7 @@ function renderLevelHome(data = loadData()) {
   const passedCount = (data.profile?.passedLevels || []).length;
   const diagnosis = analyzeSkills(data.sessions);
   const focus = diagnosis.weakestSkill?.id || 'general';
+  const troubleWords = frequentMissWords(data.sessions);
   const message = setupMessage
     ? `<div class="st-banner is-error" role="alert"><span aria-hidden="true">!</span><div><strong>Could not start the session</strong>${escapeHtml(setupMessage)}</div></div>`
     : capabilityBanner();
@@ -113,6 +114,7 @@ function renderLevelHome(data = loadData()) {
       <div class="st-card st-level-card">
         <p class="st-card-label">Level ${currentLevelId}</p>
         <p class="st-level-focus">Focus: ${SKILL_COPY[focus]?.label || 'General warm-up'}${passedCount ? ` · ${passedCount} level${passedCount === 1 ? '' : 's'} cleared` : ''}</p>
+        ${troubleWords.length ? `<p class="st-microcopy">Targeting recent trouble spots: ${troubleWords.map((word) => escapeHtml(word)).join(', ')}.</p>` : ''}
         <p class="st-microcopy">Your passage is generated when you start, so you won't see it until then.</p>
         <div class="st-editor-actions">
           <span class="st-microcopy">Clear this level to unlock Level ${currentLevelId + 1}.</span>
@@ -123,10 +125,10 @@ function renderLevelHome(data = loadData()) {
       </div>
     </section>`;
 
-  document.querySelector('#start-level')?.addEventListener('click', () => beginLevelAttempt(currentLevelId, focus));
+  document.querySelector('#start-level')?.addEventListener('click', () => beginLevelAttempt(currentLevelId, focus, troubleWords));
 }
 
-async function beginLevelAttempt(levelId, focus) {
+async function beginLevelAttempt(levelId, focus, troubleWords = []) {
   const startButton = document.querySelector('#start-level');
   if (startButton) {
     startButton.disabled = true;
@@ -135,7 +137,7 @@ async function beginLevelAttempt(levelId, focus) {
 
   let text;
   try {
-    const generated = await generateLevelPassage(levelId, focus);
+    const generated = await generateLevelPassage(levelId, focus, troubleWords);
     text = generated.text;
   } catch (error) {
     text = getFallbackScript(focus).text;
