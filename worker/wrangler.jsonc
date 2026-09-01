@@ -3,6 +3,9 @@
   "name": "clearspeak-levels",
   "main": "src/index.js",
   "compatibility_date": "2026-08-30",
+  "routes": [
+    { "pattern": "clearspeak-levels.bob-mai.com", "custom_domain": true }
+  ],
   "ai": { "binding": "AI" },
   "kv_namespaces": [
     { "binding": "LEVEL_BUDGET", "id": "b55c767413e3433e86ef6e228de2a6dd" }

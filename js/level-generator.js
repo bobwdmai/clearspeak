@@ -1,4 +1,8 @@
-const WORKER_URL = 'https://clearspeak-levels.bobwdmai.workers.dev';
+// A custom domain under bob-mai.com rather than *.workers.dev: some ISP
+// DNS resolvers intercept workers.dev lookups with a redirect/landing page
+// (observed with Comcast/Xfinity), breaking the TLS handshake and making
+// every generation request fail as a network error.
+const WORKER_URL = 'https://clearspeak-levels.bob-mai.com';
 
 export class LevelGenerationError extends Error {
   constructor(reason) {
