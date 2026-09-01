@@ -1,11 +1,24 @@
 .st-app {
-  --st-ink: #18312d;
-  --st-ink-soft: #5d6d69;
-  --st-paper: #f4f1eb;
-  --st-card: #fffdf8;
-  --st-surface-alt: #faf8f2;
-  --st-neutral-pale: #e9e6df;
-  --st-line: #d9d7cf;
+  /* Structural tokens alias the host page's real PaperMod theme variables
+     (--primary/--secondary/--theme/--entry/--border/--radius), so colors,
+     card surfaces, and corner radius come from whatever theme the site is
+     actually running — including its light/dark toggle — instead of a
+     separate hand-maintained palette that could drift from it. The
+     fallback after each comma is PaperMod's own default light value, used
+     only when this stylesheet is loaded outside a PaperMod page (e.g. the
+     standalone index.html here), so behavior is identical either way. */
+  --st-ink: var(--primary, #1e1e1e);
+  --st-ink-soft: var(--secondary, #6c6c6c);
+  --st-paper: var(--theme, #ffffff);
+  --st-card: var(--entry, #ffffff);
+  --st-surface-alt: var(--code-bg, #f5f5f5);
+  --st-neutral-pale: var(--tertiary, #d6d6d6);
+  --st-line: var(--border, #eeeeee);
+  --st-radius: var(--radius, 8px);
+
+  /* Accent family: PaperMod has no equivalent semantic tokens, so these
+     stay ClearSpeak's own brand colors — still theme-aware via the
+     html[data-theme="dark"] override below. */
   --st-green: #2c685b;
   --st-green-fill: #2c685b;
   --st-green-fill-hover: #25423d;
@@ -21,27 +34,18 @@
   --st-red-pale: #f4deda;
   --st-red-border: #dfb2aa;
   --st-red-text: #8a3f34;
+
   min-height: 100vh;
   color: var(--st-ink);
   background: var(--st-paper);
-  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   line-height: 1.5;
 }
 
-/* Flat design, matching the site's own PaperMod theme: solid backgrounds, simple
-   1px borders, no gradients, no drop shadows. Follows the site's light/dark
-   toggle (html[data-theme]) instead of keeping a separate one. Fill tokens
-   (*-fill) stay constant across themes since they sit behind fixed white text;
-   the plain accent tokens (--st-green etc.) flip lighter for dark backgrounds
-   since they're used as text and thin accents. */
+/* Only the accent family needs its own dark variant — the structural
+   tokens above already flip automatically with the host page's real
+   :root[data-theme="dark"] variables. */
 html[data-theme="dark"] .st-app {
-  --st-ink: #e8ece9;
-  --st-ink-soft: #9aa39d;
-  --st-paper: #1c1e1c;
-  --st-card: #262f2a;
-  --st-surface-alt: #222925;
-  --st-neutral-pale: #33362f;
-  --st-line: #3a3e3a;
   --st-green: #82c3ac;
   --st-green-pale: #22332c;
   --st-green-border: #3c5349;
@@ -73,7 +77,7 @@ html[data-theme="dark"] .st-app {
   background: var(--st-paper);
 }
 
-.st-brand { display: flex; align-items: center; gap: 11px; border: 0; background: none; cursor: pointer; font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 600; }
+.st-brand { display: flex; align-items: center; gap: 11px; border: 0; background: none; cursor: pointer; font-size: 25px; font-weight: 600; }
 .st-brand-mark { width: 31px; height: 31px; display: flex; align-items: center; justify-content: center; gap: 2px; border-radius: 50%; background: var(--st-green-fill); }
 .st-brand-mark i { display: block; width: 2px; border-radius: 2px; background: #fff; }
 .st-brand-mark i:nth-child(1), .st-brand-mark i:nth-child(5) { height: 6px; }
@@ -87,11 +91,11 @@ html[data-theme="dark"] .st-app {
 
 .st-main { width: min(1080px, calc(100% - 36px)); min-height: calc(100vh - 148px); margin: 0 auto; padding: clamp(54px, 8vw, 92px) 0 70px; }
 .st-kicker { margin: 0 0 16px; color: var(--st-green); font: 500 12px ui-monospace, monospace; letter-spacing: .13em; text-transform: uppercase; }
-.st-title { max-width: 800px; margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(48px, 7.2vw, 82px); font-weight: 500; line-height: .98; letter-spacing: -.035em; }
+.st-title { max-width: 800px; margin: 0; font-size: clamp(48px, 7.2vw, 82px); font-weight: 500; line-height: .98; letter-spacing: -.035em; }
 .st-title em { color: var(--st-green); font-weight: inherit; }
 .st-lead { max-width: 600px; margin: 24px 0 0; color: var(--st-ink-soft); font-size: clamp(16px, 2vw, 19px); line-height: 1.65; }
 
-.st-card { border: 1px solid var(--st-line); border-radius: 19px; background: var(--st-card); }
+.st-card { border: 1px solid var(--st-line); border-radius: var(--st-radius); background: var(--st-card); }
 .st-card-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; font-weight: 700; font-size: 14px; }
 .st-editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 22px; }
 .st-microcopy { color: var(--st-ink-soft); font-size: 12px; }
@@ -105,16 +109,16 @@ html[data-theme="dark"] .st-app {
 .st-danger { min-height: 43px; padding: 0 18px; border: 1px solid var(--st-red-border); background: transparent; color: var(--st-red); font-weight: 650; font-size: 13px; }
 .st-danger:hover { background: var(--st-red-pale); }
 
-.st-banner { display: flex; gap: 12px; margin: 0 0 26px; padding: 15px 17px; border: 1px solid var(--st-amber-border); border-radius: 12px; background: var(--st-amber-pale); color: var(--st-amber-text); font-size: 13px; }
+.st-banner { display: flex; gap: 12px; margin: 0 0 26px; padding: 15px 17px; border: 1px solid var(--st-amber-border); border-radius: var(--st-radius); background: var(--st-amber-pale); color: var(--st-amber-text); font-size: 13px; }
 .st-banner.is-error { border-color: var(--st-red-border); background: var(--st-red-pale); color: var(--st-red-text); }
 .st-banner strong { display: block; margin-bottom: 2px; }
 
 .st-level-card { padding: clamp(24px, 4vw, 36px); margin-top: 30px; max-width: 720px; }
 .st-level-focus { margin: 4px 0 14px; color: var(--st-ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
 
-.st-level-banner { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 26px; padding: 20px 22px; border-radius: 16px; border: 1px solid var(--st-line); }
+.st-level-banner { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 26px; padding: 20px 22px; border-radius: var(--st-radius); border: 1px solid var(--st-line); }
 .st-level-banner span { font-size: 22px; }
-.st-level-banner h2 { margin: 0 0 6px; font-family: Georgia, "Times New Roman", serif; font-size: 20px; }
+.st-level-banner h2 { margin: 0 0 6px; font-size: 20px; }
 .st-level-banner ul { margin: 0; padding-left: 18px; color: var(--st-ink-soft); font-size: 13px; }
 .st-level-banner p { margin: 0; color: var(--st-ink-soft); font-size: 13px; }
 .st-level-banner.is-pass { border-color: var(--st-green-border); background: var(--st-green-pale); }
@@ -122,7 +126,7 @@ html[data-theme="dark"] .st-app {
 .st-level-banner.is-fail { border-color: var(--st-red-border); background: var(--st-red-pale); }
 .st-level-banner.is-fail h2 { color: var(--st-red); }
 
-.st-focus-symbol { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--st-green-pale); color: var(--st-green); font-family: Georgia, "Times New Roman", serif; font-size: 18px; font-weight: 700; }
+.st-focus-symbol { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--st-green-pale); color: var(--st-green); font-size: 18px; font-weight: 700; }
 .st-focus-eyebrow { display: block; margin-bottom: 3px; color: var(--st-green); font: 600 10px ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; }
 .st-level-pill { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; padding: 6px 10px; border-radius: 99px; font: 600 9px ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; }
 .st-level-pill.is-strong { background: var(--st-green-pale); color: var(--st-green); }
@@ -141,7 +145,7 @@ html[data-theme="dark"] .st-app {
 .st-assessment-time strong { font-size: 14px; }
 .st-assessment-time small { margin-top: 2px; color: var(--st-ink-soft); font-size: 11px; }
 .st-assessment-battery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 27px 0; }
-.st-battery-item { padding: 15px; border: 1px solid var(--st-line); border-radius: 12px; background: var(--st-surface-alt); }
+.st-battery-item { padding: 15px; border: 1px solid var(--st-line); border-radius: var(--st-radius); background: var(--st-surface-alt); }
 .st-battery-item > span { display: block; margin-bottom: 17px; color: var(--st-green); font: 600 10px ui-monospace, monospace; }
 .st-battery-item strong, .st-battery-item small { display: block; }
 .st-battery-item strong { margin-bottom: 5px; font-size: 12px; }
@@ -151,7 +155,7 @@ html[data-theme="dark"] .st-app {
 .st-text-button { padding: 8px 4px; border: 0; border-bottom: 1px solid transparent; background: transparent; color: var(--st-ink-soft); cursor: pointer; font-size: 12px; font-weight: 650; }
 .st-text-button:hover { color: var(--st-ink); border-bottom-color: var(--st-ink); }
 .st-assessment-privacy { display: flex; flex-direction: column; justify-content: center; padding: 30px; background: var(--st-green-pale); }
-.st-assessment-privacy h2 { margin: 20px 0 10px; font-family: Georgia, "Times New Roman", serif; font-size: 25px; line-height: 1.12; }
+.st-assessment-privacy h2 { margin: 20px 0 10px; font-size: 25px; line-height: 1.12; }
 .st-assessment-privacy p { margin: 0; color: var(--st-ink-soft); font-size: 12px; line-height: 1.65; }
 .st-assessment-privacy ul { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 21px 0 0; list-style: none; }
 .st-assessment-privacy li { padding: 5px 8px; border-radius: 99px; background: var(--st-card); color: var(--st-green); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
@@ -163,9 +167,9 @@ html[data-theme="dark"] .st-app {
 .st-interstitial-card { padding: clamp(35px, 7vw, 65px); }
 .st-checkmark { display: grid; place-items: center; width: 58px; height: 58px; margin: 0 auto 22px; border-radius: 50%; background: var(--st-green-pale); color: var(--st-green); font-size: 23px; }
 .st-interstitial .st-lead { margin-left: auto; margin-right: auto; font-size: 15px; }
-.st-next-preview { margin: 29px 0; padding: 20px; border: 1px solid var(--st-line); border-radius: 13px; background: var(--st-surface-alt); text-align: left; }
+.st-next-preview { margin: 29px 0; padding: 20px; border: 1px solid var(--st-line); border-radius: var(--st-radius); background: var(--st-surface-alt); text-align: left; }
 .st-next-preview span { color: var(--st-green); font: 600 9px ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; }
-.st-next-preview p { margin: 8px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: 19px; line-height: 1.45; }
+.st-next-preview p { margin: 8px 0 0; font-size: 19px; line-height: 1.45; }
 .st-diagnostic-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 22px; }
 .st-diagnostic-metric { position: relative; overflow: hidden; }
 .st-diagnostic-metric::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--st-line); }
@@ -173,11 +177,11 @@ html[data-theme="dark"] .st-app {
 .st-diagnostic-metric.is-developing::before { background: var(--st-amber); }
 .st-diagnostic-metric.is-needs-work::before { background: var(--st-red); }
 .st-diagnostic-top { display: flex; align-items: start; justify-content: space-between; }
-.st-diagnostic-score { margin: 2px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: 44px; line-height: 1; }
+.st-diagnostic-score { margin: 2px 0 0; font-size: 44px; line-height: 1; }
 .st-diagnostic-score small { margin-left: 3px; color: var(--st-ink-soft); font: 500 10px ui-monospace, monospace; }
 .st-recommendation-card { display: grid; grid-template-columns: 54px 1fr; align-items: center; gap: 22px; margin-top: 18px; padding: 26px; }
 .st-recommendation-mark { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: var(--st-green-fill); color: #fff; font-size: 20px; }
-.st-recommendation-card h2 { margin: 2px 0 5px; font-family: Georgia, "Times New Roman", serif; font-size: 25px; }
+.st-recommendation-card h2 { margin: 2px 0 5px; font-size: 25px; }
 .st-recommendation-card p { margin: 0; color: var(--st-ink-soft); font-size: 12px; }
 .st-recommendation-card .st-word-tip { margin-top: 10px; color: var(--st-ink); }
 
@@ -189,7 +193,7 @@ html[data-theme="dark"] .st-app {
 .st-timer { font: 500 16px ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .st-record-card { padding: clamp(28px, 6vw, 62px); text-align: center; }
 .st-record-card .st-kicker { margin-bottom: 22px; }
-.st-target { margin: 0 auto; max-width: 690px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(29px, 4.3vw, 45px); line-height: 1.27; letter-spacing: -.015em; }
+.st-target { margin: 0 auto; max-width: 690px; font-size: clamp(29px, 4.3vw, 45px); line-height: 1.27; letter-spacing: -.015em; }
 .st-transcript-wrap { min-height: 70px; margin: 42px auto 25px; padding-top: 22px; border-top: 1px solid var(--st-line); }
 .st-transcript-label { margin: 0 0 7px; color: var(--st-ink-soft); font: 500 10px ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; }
 .st-live-transcript { min-height: 28px; margin: 0; color: var(--st-green); font-size: 16px; }
@@ -201,16 +205,16 @@ html[data-theme="dark"] .st-app {
 
 .st-results { max-width: 930px; margin: 0 auto; }
 .st-results-head { display: flex; align-items: end; justify-content: space-between; gap: 30px; margin-bottom: 30px; }
-.st-results-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(42px, 6vw, 64px); line-height: 1; font-weight: 500; }
+.st-results-title { margin: 0; font-size: clamp(42px, 6vw, 64px); line-height: 1; font-weight: 500; }
 .st-results-actions { display: flex; gap: 10px; }
 .st-score-card { display: grid; grid-template-columns: 200px 1fr; overflow: hidden; }
 .st-score-main { display: grid; place-items: center; padding: 34px 26px; color: white; background: var(--st-green-fill); text-align: center; }
-.st-score-number { display: flex; align-items: baseline; font-family: Georgia, "Times New Roman", serif; font-size: 76px; line-height: 1; }
+.st-score-number { display: flex; align-items: baseline; font-size: 76px; line-height: 1; }
 .st-score-number small { font: 500 15px ui-monospace, monospace; opacity: .72; }
 .st-score-caption { margin-top: 7px; font: 500 10px ui-monospace, monospace; letter-spacing: .13em; text-transform: uppercase; opacity: .78; }
 .st-score-detail { padding: 32px 38px; }
-.st-score-detail h2 { margin: 0 0 17px; font-family: Georgia, "Times New Roman", serif; font-size: 26px; }
-.st-word-diff { font-family: Georgia, "Times New Roman", serif; font-size: 25px; line-height: 1.75; }
+.st-score-detail h2 { margin: 0 0 17px; font-size: 26px; }
+.st-word-diff { font-size: 25px; line-height: 1.75; }
 .st-word { padding: 2px 3px; border-radius: 4px; }
 .st-word-match { color: var(--st-ink); }
 .st-word-sub { background: var(--st-amber-pale); color: var(--st-amber-text); text-decoration: underline wavy var(--st-amber) 1px; text-underline-offset: 4px; }
@@ -223,14 +227,14 @@ html[data-theme="dark"] .st-app {
 .st-metric { padding: 22px; }
 .st-metric-icon { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: 18px; border-radius: 50%; background: var(--st-green-pale); color: var(--st-green); font-size: 17px; }
 .st-metric-label { margin: 0 0 7px; color: var(--st-ink-soft); font: 500 10px ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; }
-.st-metric-value { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 25px; text-transform: capitalize; }
+.st-metric-value { margin: 0; font-size: 25px; text-transform: capitalize; }
 .st-metric-note { margin: 6px 0 0; color: var(--st-ink-soft); font-size: 11px; }
 .st-transcript-card { margin-top: 18px; padding: 24px 28px; }
 .st-transcript-card summary { cursor: pointer; font-weight: 700; font-size: 13px; }
 .st-transcript-card p { margin: 17px 0 0; color: var(--st-ink-soft); }
 
 .st-history-header { display: flex; align-items: end; justify-content: space-between; gap: 25px; margin-bottom: 38px; }
-.st-page-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(48px, 7vw, 72px); font-weight: 500; line-height: 1; }
+.st-page-title { margin: 0; font-size: clamp(48px, 7vw, 72px); font-weight: 500; line-height: 1; }
 .st-history-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; }
 .st-import-label { display: inline-flex; align-items: center; }
 .st-import-label input[type=file] { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
@@ -239,7 +243,7 @@ html[data-theme="dark"] .st-app {
 .st-history-item { overflow: hidden; }
 .st-history-summary { display: grid; grid-template-columns: 80px 150px 1fr 28px; align-items: center; gap: 22px; padding: 22px 25px; cursor: pointer; list-style: none; }
 .st-history-summary::-webkit-details-marker { display: none; }
-.st-history-score { font-family: Georgia, "Times New Roman", serif; font-size: 34px; }
+.st-history-score { font-size: 34px; }
 .st-history-score small { color: var(--st-ink-soft); font: 400 10px ui-monospace, monospace; }
 .st-history-date { color: var(--st-ink-soft); font: 400 11px ui-monospace, monospace; }
 .st-history-snippet { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
@@ -252,7 +256,7 @@ html[data-theme="dark"] .st-app {
 .st-history-meta { display: flex; gap: 20px; margin-top: 18px; color: var(--st-ink-soft); font-size: 11px; text-transform: capitalize; }
 .st-empty { padding: 70px 25px; text-align: center; }
 .st-empty-icon { display: grid; place-items: center; width: 62px; height: 62px; margin: 0 auto 19px; border: 1px solid var(--st-line); border-radius: 50%; font-size: 25px; }
-.st-empty h2 { margin: 0 0 8px; font-family: Georgia, "Times New Roman", serif; font-size: 29px; }
+.st-empty h2 { margin: 0 0 8px; font-size: 29px; }
 .st-empty p { margin: 0 0 23px; color: var(--st-ink-soft); }
 .st-toast { position: fixed; left: 50%; bottom: 28px; z-index: 20; transform: translate(-50%, 20px); padding: 12px 18px; border-radius: 99px; background: #1f2926; border: 1px solid rgba(255,255,255,.08); color: #fff; font-size: 13px; opacity: 0; pointer-events: none; transition: .25s; }
 .st-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
