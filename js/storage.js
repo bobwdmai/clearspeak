@@ -54,6 +54,10 @@ export function setLevelProgress(patch) {
 export function clearHistory() {
   const data = loadData();
   data.sessions = [];
+  // A level/passedLevels without any session backing it is meaningless in
+  // this app, so clearing history is a full reset back to the placement
+  // test rather than an orphaned "Level 4" with no history to justify it.
+  data.profile = { ...data.profile, placementCompleted: false, currentLevel: 1, passedLevels: [] };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
@@ -64,8 +68,14 @@ export function exportBackup() {
   const link = document.createElement('a');
   link.href = url;
   link.download = `speech-trainer-backup-${new Date().toISOString().slice(0, 10)}.voice`;
+  // Some browsers only honor a synthetic download click reliably when the
+  // anchor is actually in the document, and revoking the blob URL before
+  // the download has started can cancel it — so attach, click, detach, and
+  // revoke on a delay instead of immediately.
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export async function importBackup(file, { replace = false } = {}) {

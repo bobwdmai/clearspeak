@@ -546,7 +546,7 @@ function renderHistory() {
   });
   document.querySelector('#import-history').addEventListener('change', handleImport);
   document.querySelector('#clear-history').addEventListener('click', () => {
-    if (window.confirm('Clear every saved practice session from this browser? Export a backup first if you may need them later.')) {
+    if (window.confirm('Clear every saved practice session and reset your level progress? Export a backup first if you may need them later.')) {
       clearHistory();
       refreshHistoryCount();
       renderHistory();

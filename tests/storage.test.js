@@ -57,12 +57,16 @@ test('rejects an incompatible backup without changing history', async () => {
   assert.equal(loadData().sessions[0].id, 'safe');
 });
 
-test('clear removes sessions while retaining the profile envelope', () => {
+test('clear removes sessions and resets level progress, keeping the profile envelope', () => {
   saveSession(makeSession('one'));
+  setLevelProgress({ placementCompleted: true, currentLevel: 4, passedLevels: [1, 2, 3] });
   clearHistory();
   const data = loadData();
   assert.equal(data.sessions.length, 0);
   assert.equal(data.appId, 'speech-trainer');
+  assert.equal(data.profile.placementCompleted, false);
+  assert.equal(data.profile.currentLevel, 1);
+  assert.deepEqual(data.profile.passedLevels, []);
 });
 
 test('level progress is stored inside the profile', () => {
