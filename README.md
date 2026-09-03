@@ -18,7 +18,7 @@ If passage generation is unavailable (offline, or the Worker's daily token budge
 
 `worker/` is a small, separate Cloudflare Worker (`clearspeak-levels`) that ClearSpeak's frontend calls to generate each level's passage. It's the one piece of this app that isn't purely client-side, and deliberately so: generating text requires a model call, and a Workers AI credential must never be shipped in browser-loaded code. The Worker reaches Workers AI through Cloudflare's native `AI` binding — no API token exists anywhere in this app, client or server.
 
-To keep cost bounded regardless of traffic, the Worker tracks total tokens spent per calendar day (America/New_York) in a KV namespace and refuses new generations past a daily cap — 7,000 tokens most days, 5,000 on Sundays — returning a `budget_exceeded` response the client already knows how to fall back from. Deploy it with `cd worker && npx wrangler deploy`; see `worker/wrangler.jsonc` for its bindings.
+To keep cost bounded regardless of traffic, the Worker tracks total tokens spent per calendar day (America/New_York) in a KV namespace and refuses new generations past a 1,000-token daily cap, returning a `budget_exceeded` response the client already knows how to fall back from. Deploy it with `cd worker && npx wrangler deploy`; see `worker/wrangler.jsonc` for its bindings.
 
 ## How scoring works
 

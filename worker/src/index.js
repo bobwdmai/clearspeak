@@ -54,21 +54,18 @@ function buildPrompt(level, focus, troubleWords) {
   ].join(" ");
 }
 
-function localParts(date) {
+function localDateKey(date) {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: TIME_ZONE,
     year: "numeric",
     month: "2-digit",
-    day: "2-digit",
-    weekday: "long"
+    day: "2-digit"
   });
   const parts = Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
-  return { dateKey: `${parts.year}-${parts.month}-${parts.day}`, weekday: parts.weekday };
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
-function dailyBudget(weekday) {
-  return weekday === "Sunday" ? 5000 : 7000;
-}
+const DAILY_TOKEN_BUDGET = 1000;
 
 function corsHeaders(request) {
   const origin = request.headers.get("origin");
@@ -108,9 +105,8 @@ export default {
     const focus = ["clarity", "volume", "pitch"].includes(body.focus) ? body.focus : "general";
     const troubleWords = sanitizeTroubleWords(body.troubleWords);
 
-    const { dateKey, weekday } = localParts(new Date());
-    const key = `budget:${dateKey}`;
-    const limit = dailyBudget(weekday);
+    const key = `budget:${localDateKey(new Date())}`;
+    const limit = DAILY_TOKEN_BUDGET;
 
     // Simple read-then-write counter, not atomic under concurrent requests.
     // Acceptable here: worst case is a small overshoot on a personal-use,
