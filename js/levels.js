@@ -22,21 +22,11 @@ export function getPlacementBattery() {
   return PLACEMENT_SCRIPT_IDS.map((id) => PRACTICE_SCRIPTS.find((script) => script.id === id));
 }
 
-// Used only when live generation fails or the daily budget is exhausted —
-// a small pool to fall back on so the app stays usable.
-//
-// `recentTexts` is the newest-first list of passages practiced lately. The
-// pick avoids them so the fallback doesn't serve the same passage over and
-// over: prefer an unused script tagged for the focus, then any unused one,
-// and only when everything was used recently, the least recently used.
-export function getFallbackScript(focus, recentTexts = []) {
-  const tagged = PRACTICE_SCRIPTS.filter((script) => script.focus?.includes(focus));
-  const unused = (script) => !recentTexts.includes(script.text);
-
-  const fresh = tagged.find(unused) || PRACTICE_SCRIPTS.find(unused);
-  if (fresh) return fresh;
-
-  return PRACTICE_SCRIPTS.reduce((oldest, script) =>
-    recentTexts.indexOf(script.text) > recentTexts.indexOf(oldest.text) ? script : oldest
-  );
+// The progress an attempt earns, or null if it earns none. Only a passed
+// attempt on an AI-written passage moves the level: a passage generated on the
+// device (offline, or once the day's AI budget is spent) is practice only.
+export function progressAfterAttempt(profile, level, { passed, passageSource }) {
+  if (!passed || passageSource !== 'ai') return null;
+  const passedLevels = Array.from(new Set([...(profile?.passedLevels || []), level.id]));
+  return { currentLevel: level.id + 1, passedLevels };
 }

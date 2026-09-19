@@ -3,8 +3,9 @@ import { SpeechRecognitionController } from './speech-recognition.js';
 import { VoiceMetricsTracker } from './volume-pitch.js';
 import { alignWords } from './scoring.js';
 import { analyzeSkills, evaluateLevelAttempt, frequentMissWords, placementStartingLevel } from './skill-analysis.js';
-import { getFallbackScript, getLevelRequirements, getPlacementBattery } from './levels.js';
+import { getLevelRequirements, getPlacementBattery, progressAfterAttempt } from './levels.js';
 import { generateLevelPassage, LevelGenerationError } from './level-generator.js';
+import { generatePassage, troubleWordsIn } from './passage-generator.js';
 import { isSpeechSynthesisSupported, speak, stopSpeaking } from './speech-synthesis.js';
 import { clearHistory, exportBackup, importBackup, loadData, saveSession, setLevelProgress } from './storage.js';
 
@@ -114,7 +115,7 @@ function renderLevelHome(data = loadData()) {
         <p class="st-card-label">Level ${currentLevelId}</p>
         <p class="st-level-focus">Focus: ${SKILL_COPY[focus]?.label || 'General warm-up'}${passedCount ? ` · ${passedCount} level${passedCount === 1 ? '' : 's'} cleared` : ''}</p>
         ${troubleWords.length ? `<p class="st-microcopy">Targeting recent trouble spots: ${troubleWords.map((word) => escapeHtml(word)).join(', ')}.</p>` : ''}
-        <p class="st-microcopy">Your passage is written when you start. You'll be able to read it, and hear it read aloud, before recording begins.</p>
+        <p class="st-microcopy">Your passage is written when you start, and you can read it and hear it read aloud before recording begins. If the AI writer isn't available (offline, or today's budget is used up) you'll get a passage generated on your device instead — good practice, but it won't level you up.</p>
         <div class="st-editor-actions">
           <span class="st-microcopy">Clear this level to unlock Level ${currentLevelId + 1}.</span>
           <button class="st-primary" id="start-level" type="button" ${AudioCapture.isSupported() ? '' : 'disabled'}>
@@ -134,20 +135,29 @@ async function beginLevelAttempt(levelId, focus, troubleWords = []) {
     startButton.textContent = 'Writing your passage…';
   }
 
+  // Level progress only ever comes from an AI-written passage. If one can't be
+  // had (offline, or today's token budget is spent) the player still gets a
+  // passage generated on their device, but as practice only.
   let text;
+  let passageSource = 'ai';
+  let practiceReason = '';
   try {
     const generated = await generateLevelPassage(levelId, focus, troubleWords);
     text = generated.text;
   } catch (error) {
-    const recentTexts = loadData().sessions.slice(0, 10).map((session) => session.targetScript);
-    text = getFallbackScript(focus, recentTexts).text;
-    showToast(
-      error instanceof LevelGenerationError && error.reason === 'budget_exceeded'
-        ? "Today's AI passage budget is used up — using a preset passage instead."
-        : "Couldn't reach the passage generator — using a preset passage instead."
-    );
+    passageSource = 'algorithm';
+    practiceReason = error instanceof LevelGenerationError && error.reason === 'budget_exceeded' ? 'budget' : 'network';
+    const history = loadData().sessions.slice(0, 20).map((session) => session.targetScript);
+    text = generatePassage({ level: levelId, focus, troubleWords, history });
   }
-  renderReadyScreen(text, { levelAttempt: true, levelId, focus });
+  renderReadyScreen(text, {
+    levelAttempt: true,
+    levelId,
+    focus,
+    passageSource,
+    practiceReason,
+    targeted: troubleWordsIn(text, troubleWords)
+  });
 }
 
 // --- Ready screen: read the passage, optionally hear it, then record ------
@@ -203,12 +213,19 @@ function renderReadyScreen(targetScript, options, errorMessage = '') {
   const error = errorMessage
     ? `<div class="st-banner is-error" role="alert"><span aria-hidden="true">!</span><div><strong>Could not start recording</strong>${escapeHtml(errorMessage)}</div></div>`
     : '';
+  const practice = options.passageSource === 'algorithm'
+    ? `<div class="st-banner" role="status"><span aria-hidden="true">△</span><div><strong>Practice passage — this one won't level you up</strong>${options.practiceReason === 'budget' ? "Today's AI passage budget is used up, so this passage was generated on your device." : "The AI passage writer couldn't be reached, so this passage was generated on your device."} Your level only moves on AI-written passages.</div></div>`
+    : '';
+  const targeted = options.targeted?.length
+    ? `<p class="st-microcopy st-targeted">Practicing your trouble words: ${options.targeted.map((word) => escapeHtml(word)).join(', ')}.</p>`
+    : '';
   view.innerHTML = `
     <section class="st-recording" aria-labelledby="ready-title">
-      ${error}
+      ${error}${practice}
       <div class="st-card st-record-card">
         <p class="st-kicker">${kicker}</p>
         <h1 class="st-target" id="ready-title">${escapeHtml(targetScript)}</h1>
+        ${targeted}
         ${listenControlsHtml()}
       </div>
       <div class="st-record-actions">
@@ -502,7 +519,9 @@ async function stopSession() {
       recognitionSupported: session.recognitionSupported,
       userAgent: navigator.userAgent,
       ...(session.options.placement ? { placementBatchId: session.options.placementBatchId } : {}),
-      ...(session.options.levelAttempt ? { levelId: session.options.levelId, focus: session.options.focus } : {})
+      ...(session.options.levelAttempt
+        ? { levelId: session.options.levelId, focus: session.options.focus, passageSource: session.options.passageSource }
+        : {})
     }
   };
   saveSession(currentResult);
@@ -519,12 +538,11 @@ async function stopSession() {
   } else {
     const level = getLevelRequirements(session.options.levelId);
     const { passed, reasons } = evaluateLevelAttempt(level, currentResult);
-    if (passed) {
-      const data = loadData();
-      const passedLevels = Array.from(new Set([...(data.profile?.passedLevels || []), level.id]));
-      setLevelProgress({ currentLevel: level.id + 1, passedLevels });
-    }
-    renderLevelResult(currentResult, level, passed, reasons);
+    // Practice passages are scored and shown, but never move the level.
+    const counted = session.options.passageSource === 'ai';
+    const progress = progressAfterAttempt(loadData().profile, level, { passed, passageSource: session.options.passageSource });
+    if (progress) setLevelProgress(progress);
+    renderLevelResult(currentResult, level, passed, reasons, counted);
   }
 }
 
@@ -553,21 +571,29 @@ function metricNote(session, metric) {
   return spread ? `${spread} semitone spread` : 'Based on detected pitch';
 }
 
-function renderLevelResult(session, level, passed, reasons) {
+// `counted` is false for practice passages: they're scored like any other,
+// but a pass there doesn't unlock the next level.
+function renderLevelResult(session, level, passed, reasons, counted = true) {
   clearActiveNav();
   const clarity = session.clarityScore === null ? '—' : session.clarityScore;
   const volume = session.toneMetrics?.volumeConsistency?.label || 'not enough data';
   const pitch = session.toneMetrics?.pitchVariation?.label || 'not enough data';
-  const heading = passed ? `Level ${level.id} passed` : `Not quite — Level ${level.id} needs another pass`;
-  const continueLabel = passed ? 'Next level' : 'Try again';
+  const heading = !passed
+    ? `Not quite — Level ${level.id} needs another pass`
+    : counted ? `Level ${level.id} passed` : `Bar met — but practice passages don't level you up`;
+  const bannerClass = !passed ? 'is-fail' : counted ? 'is-pass' : 'is-practice';
+  const bannerIcon = !passed ? '↺' : counted ? '✓' : '△';
+  const continueLabel = !counted ? 'Practice again' : passed ? 'Next level' : 'Try again';
+  const passedNote = passed ? (counted ? '<p>Nice work — keep that consistency going.</p>' : '') : '';
+  const practiceNote = counted ? '' : '<p>That was a practice passage, so your level stays where it is. Levels only move on AI-written passages.</p>';
 
   view.innerHTML = `
     <section class="st-results" aria-labelledby="results-title">
-      <div class="st-level-banner ${passed ? 'is-pass' : 'is-fail'}">
-        <span aria-hidden="true">${passed ? '✓' : '↺'}</span>
+      <div class="st-level-banner ${bannerClass}">
+        <span aria-hidden="true">${bannerIcon}</span>
         <div>
           <h2>${heading}</h2>
-          ${reasons.length ? `<ul>${reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}</ul>` : passed ? '<p>Nice work — keep that consistency going.</p>' : ''}
+          ${reasons.length ? `<ul>${reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}</ul>` : ''}${passedNote}${practiceNote}
         </div>
       </div>
       <div class="st-results-head">
@@ -635,7 +661,7 @@ function renderHistoryItem(session) {
   const volume = session.toneMetrics?.volumeConsistency?.label || 'unavailable';
   const pitch = session.toneMetrics?.pitchVariation?.label || 'unavailable';
   const badge = session.meta?.levelId
-    ? `<span class="st-history-badge">Level ${session.meta.levelId}</span>`
+    ? `<span class="st-history-badge${session.meta.passageSource === 'algorithm' ? ' is-placement' : ''}">Level ${session.meta.levelId}${session.meta.passageSource === 'algorithm' ? ' · practice' : ''}</span>`
     : session.meta?.placementBatchId
       ? `<span class="st-history-badge is-placement">Placement</span>`
       : '';

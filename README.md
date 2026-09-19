@@ -14,7 +14,9 @@ Each level's passage is written on demand by the `worker/` Cloudflare Worker (se
 
 Before every recording there's a ready screen showing the passage with **Listen** and **Listen slowly** buttons, so you can hear it read aloud first. Playback uses the browser's built-in speech synthesis — no network call, no Worker, no token cost — and is always stopped before the microphone opens, so the recording (and its score) only ever hears you.
 
-If passage generation is unavailable (offline, or the Worker's daily token budget is used up) ClearSpeak falls back to one of a small set of preset passages tagged by focus, so a level attempt never gets stuck waiting on the network.
+If the AI writer isn't available (offline, or the Worker's daily token budget is used up), ClearSpeak generates the passage on your device instead, using a small Markov chain trained in the browser on a built-in corpus, the preset passages, and passages you've practiced before. It aims at your trouble spots the same way the AI does: words you keep missing are worked into the passage — a sentence containing each one is reused as-is, since re-drilling the context you stumbled on is the point — and the rest is filled with new sentences, scored for the weak skill (consonant clusters for clarity, long sustained phrases for volume, questions and contrast for pitch). Because it recombines existing phrasing, its own sentences can be quirky or slightly off-grammar; that's fine for a speaking drill.
+
+**Level progress only moves on AI-written passages.** A generated practice passage is scored and shown like any other, and says so up front, but passing it doesn't unlock the next level — so running out of AI budget can't be used to skip ahead.
 
 ## The level-generation Worker
 

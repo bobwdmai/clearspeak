@@ -130,6 +130,8 @@ html[data-theme="dark"] .st-app {
 .st-level-banner.is-pass h2 { color: var(--st-green); }
 .st-level-banner.is-fail { border-color: var(--st-red-border); background: var(--st-red-pale); }
 .st-level-banner.is-fail h2 { color: var(--st-red); }
+.st-level-banner.is-practice { border-color: var(--st-amber-border); background: var(--st-amber-pale); }
+.st-level-banner.is-practice h2 { color: var(--st-amber-text); }
 
 .st-focus-symbol { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--st-green-pale); color: var(--st-green); font-size: 18px; font-weight: 700; }
 .st-focus-eyebrow { display: block; margin-bottom: 3px; color: var(--st-green); font-weight: 600; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
@@ -205,6 +207,7 @@ html[data-theme="dark"] .st-app {
 .st-live-transcript.is-placeholder { color: var(--st-ink-soft); font-style: italic; }
 .st-meter-shell { height: 8px; max-width: 440px; margin: 0 auto; border-radius: 99px; overflow: hidden; background: var(--st-line); }
 .st-meter-fill { width: 1%; height: 100%; border-radius: inherit; background: var(--st-green); transition: width 80ms linear; }
+.st-record-card .st-targeted { margin: 22px 0 0; }
 .st-listen { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 30px; }
 .st-listen .st-secondary { min-width: 138px; }
 .st-next-preview + .st-listen { margin: -10px 0 26px; }
