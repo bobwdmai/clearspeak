@@ -139,7 +139,8 @@ async function beginLevelAttempt(levelId, focus, troubleWords = []) {
     const generated = await generateLevelPassage(levelId, focus, troubleWords);
     text = generated.text;
   } catch (error) {
-    text = getFallbackScript(focus).text;
+    const recentTexts = loadData().sessions.slice(0, 10).map((session) => session.targetScript);
+    text = getFallbackScript(focus, recentTexts).text;
     showToast(
       error instanceof LevelGenerationError && error.reason === 'budget_exceeded'
         ? "Today's AI passage budget is used up — using a preset passage instead."

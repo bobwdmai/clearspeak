@@ -24,7 +24,19 @@ export function getPlacementBattery() {
 
 // Used only when live generation fails or the daily budget is exhausted —
 // a small pool to fall back on so the app stays usable.
-export function getFallbackScript(focus) {
-  const tagged = PRACTICE_SCRIPTS.find((script) => script.focus?.includes(focus));
-  return tagged || PRACTICE_SCRIPTS[0];
+//
+// `recentTexts` is the newest-first list of passages practiced lately. The
+// pick avoids them so the fallback doesn't serve the same passage over and
+// over: prefer an unused script tagged for the focus, then any unused one,
+// and only when everything was used recently, the least recently used.
+export function getFallbackScript(focus, recentTexts = []) {
+  const tagged = PRACTICE_SCRIPTS.filter((script) => script.focus?.includes(focus));
+  const unused = (script) => !recentTexts.includes(script.text);
+
+  const fresh = tagged.find(unused) || PRACTICE_SCRIPTS.find(unused);
+  if (fresh) return fresh;
+
+  return PRACTICE_SCRIPTS.reduce((oldest, script) =>
+    recentTexts.indexOf(script.text) > recentTexts.indexOf(oldest.text) ? script : oldest
+  );
 }
