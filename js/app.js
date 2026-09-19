@@ -5,6 +5,7 @@ import { alignWords } from './scoring.js';
 import { analyzeSkills, evaluateLevelAttempt, frequentMissWords, placementStartingLevel } from './skill-analysis.js';
 import { getFallbackScript, getLevelRequirements, getPlacementBattery } from './levels.js';
 import { generateLevelPassage, LevelGenerationError } from './level-generator.js';
+import { isSpeechSynthesisSupported, speak, stopSpeaking } from './speech-synthesis.js';
 import { clearHistory, exportBackup, importBackup, loadData, saveSession, setLevelProgress } from './storage.js';
 
 const MAX_DURATION_MS = 120_000;
@@ -12,7 +13,6 @@ const view = document.querySelector('#app-view');
 const historyCount = document.querySelector('#history-count');
 let activeSession = null;
 let currentResult = null;
-let setupMessage = '';
 let placementMessage = '';
 let placement = null; // { batchId, index, retake, battery } while a placement run is in progress
 let toastTimer = null;
@@ -52,6 +52,7 @@ function clearActiveNav() {
 }
 
 function setRoute(route) {
+  stopSpeaking();
   placement = null;
   document.querySelectorAll('[data-route]').forEach((button) => {
     button.classList.toggle('is-active', button.dataset.route === route);
@@ -101,9 +102,7 @@ function renderLevelHome(data = loadData()) {
   const diagnosis = analyzeSkills(data.sessions);
   const focus = diagnosis.weakestSkill?.id || 'general';
   const troubleWords = frequentMissWords(data.sessions);
-  const message = setupMessage
-    ? `<div class="st-banner is-error" role="alert"><span aria-hidden="true">!</span><div><strong>Could not start the session</strong>${escapeHtml(setupMessage)}</div></div>`
-    : capabilityBanner();
+  const message = capabilityBanner();
 
   view.innerHTML = `
     <section aria-labelledby="setup-title">
@@ -115,7 +114,7 @@ function renderLevelHome(data = loadData()) {
         <p class="st-card-label">Level ${currentLevelId}</p>
         <p class="st-level-focus">Focus: ${SKILL_COPY[focus]?.label || 'General warm-up'}${passedCount ? ` · ${passedCount} level${passedCount === 1 ? '' : 's'} cleared` : ''}</p>
         ${troubleWords.length ? `<p class="st-microcopy">Targeting recent trouble spots: ${troubleWords.map((word) => escapeHtml(word)).join(', ')}.</p>` : ''}
-        <p class="st-microcopy">Your passage is generated when you start, so you won't see it until then.</p>
+        <p class="st-microcopy">Your passage is written when you start. You'll be able to read it, and hear it read aloud, before recording begins.</p>
         <div class="st-editor-actions">
           <span class="st-microcopy">Clear this level to unlock Level ${currentLevelId + 1}.</span>
           <button class="st-primary" id="start-level" type="button" ${AudioCapture.isSupported() ? '' : 'disabled'}>
@@ -147,7 +146,76 @@ async function beginLevelAttempt(levelId, focus, troubleWords = []) {
         : "Couldn't reach the passage generator — using a preset passage instead."
     );
   }
-  startSession(text, { levelAttempt: true, levelId, focus });
+  renderReadyScreen(text, { levelAttempt: true, levelId, focus });
+}
+
+// --- Ready screen: read the passage, optionally hear it, then record ------
+
+function listenControlsHtml() {
+  return `
+    <div class="st-listen">
+      <button class="st-secondary" id="listen-normal" type="button">▶ Listen</button>
+      <button class="st-secondary" id="listen-slow" type="button">▶ Listen slowly</button>
+    </div>`;
+}
+
+// Wires the Listen / Listen slowly pair currently on screen. Each acts as a
+// play/stop toggle; starting one stops the other. Hidden where the browser
+// has no speech synthesis, so an unsupported browser just doesn't see them.
+function wireListenControls(text) {
+  const controls = [
+    { button: document.querySelector('#listen-normal'), rate: 1, label: '▶ Listen' },
+    { button: document.querySelector('#listen-slow'), rate: 0.7, label: '▶ Listen slowly' }
+  ].filter(({ button }) => button);
+  if (!controls.length) return;
+
+  if (!isSpeechSynthesisSupported()) {
+    controls.forEach(({ button }) => { button.hidden = true; });
+    return;
+  }
+
+  let active = null;
+  const idle = () => {
+    active = null;
+    controls.forEach(({ button, label }) => { button.textContent = label; });
+  };
+  controls.forEach((control) => {
+    control.button.addEventListener('click', () => {
+      if (active === control) {
+        stopSpeaking();
+        idle();
+        return;
+      }
+      idle();
+      active = control;
+      control.button.textContent = '■ Stop';
+      speak(text, { rate: control.rate, onEnd: () => { if (active === control) idle(); } });
+    });
+  });
+}
+
+function renderReadyScreen(targetScript, options, errorMessage = '') {
+  clearActiveNav();
+  const kicker = options.placement
+    ? `Placement · Passage ${options.placementIndex + 1} of ${options.placementTotal}`
+    : `Level ${options.levelId} · ${SKILL_COPY[options.focus]?.label || 'Warm-up'}`;
+  const error = errorMessage
+    ? `<div class="st-banner is-error" role="alert"><span aria-hidden="true">!</span><div><strong>Could not start recording</strong>${escapeHtml(errorMessage)}</div></div>`
+    : '';
+  view.innerHTML = `
+    <section class="st-recording" aria-labelledby="ready-title">
+      ${error}
+      <div class="st-card st-record-card">
+        <p class="st-kicker">${kicker}</p>
+        <h1 class="st-target" id="ready-title">${escapeHtml(targetScript)}</h1>
+        ${listenControlsHtml()}
+      </div>
+      <div class="st-record-actions">
+        <button class="st-primary" id="ready-start" type="button">Start recording <span class="st-primary-arrow" aria-hidden="true">→</span></button>
+      </div>
+    </section>`;
+  wireListenControls(targetScript);
+  document.querySelector('#ready-start').addEventListener('click', () => startSession(targetScript, options));
 }
 
 // --- Placement test ---------------------------------------------------------
@@ -200,7 +268,7 @@ function beginPlacement(retake = false) {
   placementMessage = '';
   const battery = getPlacementBattery();
   placement = { batchId: createId(), index: 0, retake, battery };
-  startSession(battery[0].text, {
+  renderReadyScreen(battery[0].text, {
     placement: true,
     placementIndex: 0,
     placementTotal: battery.length,
@@ -223,12 +291,14 @@ function renderPlacementInterstitial(completedSession) {
         <p class="st-kicker">Passage ${completed} complete · ${clarity}</p>
         <h1 class="st-results-title" id="interstitial-title">Nice. One signal captured.</h1>
         <div class="st-next-preview"><span>Up next</span><p>${escapeHtml(nextScript.text)}</p></div>
+        ${listenControlsHtml()}
         <div class="st-assessment-actions is-centered">
           <button class="st-primary" id="placement-next" type="button">Start passage ${completed + 1} <span aria-hidden="true">→</span></button>
           <button class="st-text-button" id="placement-leave" type="button">Finish later</button>
         </div>
       </div>
     </section>`;
+  wireListenControls(nextScript.text);
   document.querySelector('#placement-next').addEventListener('click', () => startSession(nextScript.text, {
     placement: true,
     placementIndex: placement.index,
@@ -288,7 +358,10 @@ function renderPlacementResults(diagnosis, startingLevel) {
 // --- Recording (shared by placement passages and level attempts) ----------
 
 async function startSession(targetScript, options = {}) {
-  const startButton = document.querySelector('#start-level, #placement-start, #placement-next');
+  // Silence the synthesizer before the mic opens, or the recording (and its
+  // transcript/score) would pick up the voice instead of the speaker.
+  stopSpeaking();
+  const startButton = document.querySelector('#ready-start, #placement-next');
   if (startButton) {
     startButton.disabled = true;
     startButton.textContent = 'Opening microphone…';
@@ -333,8 +406,9 @@ async function startSession(targetScript, options = {}) {
       placementMessage = message;
       renderPlacementIntro({ retake: placement?.retake });
     } else {
-      setupMessage = message;
-      renderLevelHome();
+      // Stay on the same passage so a retry doesn't regenerate one and spend
+      // more of the daily token budget.
+      renderReadyScreen(targetScript, options, message);
     }
   }
 }
@@ -603,6 +677,8 @@ document.querySelectorAll('[data-route]').forEach((button) => {
     setRoute(button.dataset.route);
   });
 });
+
+window.addEventListener('pagehide', () => stopSpeaking());
 
 refreshHistoryCount();
 renderPracticeRoute();

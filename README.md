@@ -12,6 +12,8 @@ On first use, ClearSpeak offers a three-passage placement test that takes about 
 
 Each level's passage is written on demand by the `worker/` Cloudflare Worker (see below) — targeted at whichever skill your local session history says is currently weakest, with difficulty scaling with the level number. Passing a level means clearing its bar: a minimum clarity score, and from level 2 on, steady volume and expressive (non-monotone) pitch. Falling short serves the same level again (a freshly generated passage, not a repeat) with specific reasons why; clearing it unlocks the next one. There's no fixed ceiling and no way to jump ahead or pick an arbitrary passage — progress is level-by-level only.
 
+Before every recording there's a ready screen showing the passage with **Listen** and **Listen slowly** buttons, so you can hear it read aloud first. Playback uses the browser's built-in speech synthesis — no network call, no Worker, no token cost — and is always stopped before the microphone opens, so the recording (and its score) only ever hears you.
+
 If passage generation is unavailable (offline, or the Worker's daily token budget is used up) ClearSpeak falls back to one of a small set of preset passages tagged by focus, so a level attempt never gets stuck waiting on the network.
 
 ## The level-generation Worker
@@ -45,6 +47,7 @@ npm test
 - Microphone analysis uses `getUserMedia`, `AudioContext`, and `AnalyserNode`.
 - Word transcription uses `SpeechRecognition` / `webkitSpeechRecognition`, best supported in Chromium browsers. Other browsers continue gracefully with volume and pitch feedback only.
 - Speech recognition can't accept the `MediaStream` used by the analyser; it independently accesses the same microphone, which normally doesn't trigger a second permission prompt.
+- Listening uses `speechSynthesis`. Available voices depend on the browser and OS; where it's missing the Listen buttons are simply hidden.
 - Some browsers' speech recognition may use a vendor speech service even though ClearSpeak has no server or third-party integration of its own. Raw audio is never transmitted or retained by ClearSpeak itself.
 
 ## Embed in an existing website

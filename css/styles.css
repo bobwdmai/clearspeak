@@ -205,6 +205,9 @@ html[data-theme="dark"] .st-app {
 .st-live-transcript.is-placeholder { color: var(--st-ink-soft); font-style: italic; }
 .st-meter-shell { height: 8px; max-width: 440px; margin: 0 auto; border-radius: 99px; overflow: hidden; background: var(--st-line); }
 .st-meter-fill { width: 1%; height: 100%; border-radius: inherit; background: var(--st-green); transition: width 80ms linear; }
+.st-listen { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 30px; }
+.st-listen .st-secondary { min-width: 138px; }
+.st-next-preview + .st-listen { margin: -10px 0 26px; }
 .st-record-actions { display: flex; justify-content: center; margin-top: 30px; }
 .st-stop { min-width: 148px; background: var(--st-red-fill); border-color: var(--st-red-fill); }
 
